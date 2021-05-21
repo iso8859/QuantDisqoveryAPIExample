@@ -71,6 +71,7 @@ namespace QuantForce
             var response = await SendAsync(HttpMethod.Get, uri);
             response.EnsureSuccessStatusCode();
             string s = await response.Content.ReadAsStringAsync();
+            //Console.WriteLine(s);
             return JsonConvert.DeserializeObject<T>(s);
         }
 

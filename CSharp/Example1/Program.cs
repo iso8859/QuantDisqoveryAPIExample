@@ -81,13 +81,22 @@ namespace Example1
                     // Update column qualifications
                     await client.PostAsync<Dataset>(apiEndPoint.AppendToURL("dataset", auth.token, project.id), dataset);
 
-                    // Do the binning
-
+                    foreach (Column column in dataset.columns)
+                    {
+                        if (column.columType == VariableType.Continue || column.columType == VariableType.Nominal)
+                        {
+                            // Do the binning
+                            var binAuto = await client.GetAsync<BinsView>(apiEndPoint.AppendToURL("binning", "auto", auth.token, project.id, column.name, "20"));
+                            Console.WriteLine($"Binning for {column.name}");
+                            Console.WriteLine(JsonConvert.SerializeObject(binAuto));
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
             }
         }
         static void Main(string[] args)

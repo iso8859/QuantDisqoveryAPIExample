@@ -185,4 +185,34 @@ namespace QuantForce
     {
         public List<Column> columns { get; set; }
     }
+
+    public class Bin
+    {
+        public int id { get; set; }
+        public bool selected { get; set; } // Selected for grouping
+        public string group { get; set; }
+        public string range { get; set; }
+        public string nBads { get; set; }
+        public string nGoods { get; set; }
+        public string nTotal { get; set; }
+        public string badRate { get; set; }
+        public string pTotal { get; set; }
+        public string woe { get; set; }
+        // For graphics
+        public double graphOptimizedMean { get; set; }
+        public double graphBadRate { get; set; }
+        public double graphAvgBadRate { get; set; }
+        public double graphPercent { get; set; }
+
+        public override string ToString()
+        {
+            return $"{id}|{selected}";
+        }
+
+    }
+
+    public class BinsView
+    {
+        public List<Bin> Bins { get; set; } = new List<Bin>();
+    }
 }
