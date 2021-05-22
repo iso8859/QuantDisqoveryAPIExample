@@ -145,7 +145,11 @@ namespace QuantForce
         /// <summary>
         /// 0 = user data, 1 = predefine dataset 1, ... x = predefine dataset x
         /// </summary>
-        public int subType { get; set; } 
+        public int subType { get; set; }
+        /// <summary>
+        /// The URL to use to acces this project
+        /// </summary>
+        public string uri { get; set; }
     }
 
 
@@ -213,6 +217,12 @@ namespace QuantForce
 
     public class BinsView
     {
+        public string columnName { get; set; }
         public List<Bin> Bins { get; set; } = new List<Bin>();
+    }
+
+    public class BinsViewList
+    {
+        public List<BinsView> all { get; set; } = new List<BinsView>();
     }
 }

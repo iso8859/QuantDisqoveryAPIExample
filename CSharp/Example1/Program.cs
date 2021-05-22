@@ -47,28 +47,31 @@ namespace Example1
                         subType = 0
                     });
                 }
-                if (project!=null)
+                if (project != null)
                 {
                     Console.WriteLine("Project");
                     Console.WriteLine(JsonConvert.SerializeObject(project));
-                }
+                    apiEndPoint = project.uri.AppendToURL("api");
 
-                // Upload the dataset
-                string data = "Telco_customer_churn_v1.csv";
-                var task = await client.PostRawAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("dataset", "csv", auth.token, project.id, "raw"), System.IO.File.ReadAllBytes(data));
-                if (task != null)
-                {
+                    // Upload the dataset
+                    string data = "Telco_customer_churn_v1.csv";
+                    var task = await client.PostRawAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("dataset", "csv", auth.token, project.id, "raw"), System.IO.File.ReadAllBytes(data));
+                    if (task == null)
+                        return;
+
                     // Wait for the dataset to be integrated
                     while ((int)task.status < 400)
                     {
-                        Console.WriteLine("Task status = {0}", task.status);
+                        Console.WriteLine("Dataset task status = {0}", task.status);
                         await Task.Delay(1000);
                         task = await client.GetAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("task", auth.token, project.id, task.id));
                     }
-                    Console.WriteLine("Task status = {0}", task.status);
+                    Console.WriteLine("Dataset task status = {0}", task.status);
 
                     // Get dataset infos
                     var dataset = await client.GetAsync<Dataset>(apiEndPoint.AppendToURL("dataset", auth.token, project.id));
+                    if (dataset == null)
+                        return;
                     // Force the target
                     foreach (Column column in dataset.columns)
                     {
@@ -81,15 +84,27 @@ namespace Example1
                     // Update column qualifications
                     await client.PostAsync<Dataset>(apiEndPoint.AppendToURL("dataset", auth.token, project.id), dataset);
 
-                    foreach (Column column in dataset.columns)
+                    // Compute binning for all column
+                    task = await client.GetAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("binning", "create", auth.token, project.id, "*", "20", "Auto"));
+                    if (task == null)
+                        return;
+
+                    // Wait for the binning computation
+                    while ((int)task.status < 400)
                     {
-                        if (column.columType == VariableType.Continue || column.columType == VariableType.Nominal)
-                        {
-                            // Do the binning
-                            var binAuto = await client.GetAsync<BinsView>(apiEndPoint.AppendToURL("binning", "auto", auth.token, project.id, column.name, "20"));
-                            Console.WriteLine($"Binning for {column.name}");
-                            Console.WriteLine(JsonConvert.SerializeObject(binAuto));
-                        }
+                        Console.WriteLine("Binning task status = {0}", task.status);
+                        await Task.Delay(1000);
+                        task = await client.GetAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("task", auth.token, project.id, task.id));
+                    }
+                    Console.WriteLine("Binning task status = {0}", task.status);
+
+                    BinsViewList binning = await client.GetAsync<BinsViewList>(apiEndPoint.AppendToURL("binning", "get", auth.token, project.id, "*", "Auto"));
+                    if (binning == null)
+                        return;
+                    foreach (BinsView bv in binning.all)
+                    {
+                            // Display the binning
+                            Console.WriteLine(JsonConvert.SerializeObject(bv));
                     }
                 }
             }
