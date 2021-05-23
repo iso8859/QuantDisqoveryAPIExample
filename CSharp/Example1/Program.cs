@@ -18,7 +18,7 @@ namespace Example1
                 string endPoint = Environment.GetEnvironmentVariable("QFEndpoint");
                 if (string.IsNullOrEmpty(endPoint))
                     endPoint = "https://portal.quanforce.net";
-                string apiEndPoint = endPoint.AppendToURL("api");
+                string apiEndPoint = endPoint.AppendToURL("api", "v1.0");
 
                 Rest client = new Rest();
 
@@ -47,15 +47,18 @@ namespace Example1
                         subType = 0
                     });
                 }
+                else
+                    Console.WriteLine("Use existing project.");
+
                 if (project != null)
                 {
                     Console.WriteLine("Project");
                     Console.WriteLine(JsonConvert.SerializeObject(project));
-                    apiEndPoint = project.uri.AppendToURL("api");
+                    apiEndPoint = project.uri.AppendToURL("api", "v1.0");
 
                     // Upload the dataset
                     string data = "Telco_customer_churn_v1.csv";
-                    var task = await client.PostRawAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("dataset", "csv", auth.token, project.id, "raw"), System.IO.File.ReadAllBytes(data));
+                    var task = await client.PostRawAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("dataset", auth.token, project.id, "csv", "raw", "65001"), System.IO.File.ReadAllBytes(data)); // 65001 = UTF-8
                     if (task == null)
                         return;
 
@@ -85,7 +88,7 @@ namespace Example1
                     await client.PostAsync<Dataset>(apiEndPoint.AppendToURL("dataset", auth.token, project.id), dataset);
 
                     // Compute binning for all column
-                    task = await client.GetAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("binning", "create", auth.token, project.id, "*", "20", "Auto"));
+                    task = await client.GetAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("binning", "create", auth.token, project.id, "*", "20"));
                     if (task == null)
                         return;
 
@@ -103,9 +106,29 @@ namespace Example1
                         return;
                     foreach (BinsView bv in binning.all)
                     {
-                            // Display the binning
-                            Console.WriteLine(JsonConvert.SerializeObject(bv));
+                        // Display the binning
+                        Console.WriteLine(JsonConvert.SerializeObject(bv));
                     }
+
+                    // download Python code
+                    await client.DownloadAsync(apiEndPoint.AppendToURL("file", "export", auth.token, project.id, "Python"), "transform.py");
+                    // download Excel
+                    await client.DownloadAsync(apiEndPoint.AppendToURL("file", "export", auth.token, project.id, "Excel"), "transform.xlsx");
+                    // Let the api do the tranformation
+                    task = await client.PostRawAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("transform", auth.token, project.id, "csv", "raw", "65001"), System.IO.File.ReadAllBytes(data)); // 65001 = UTF-8
+                    if (task == null)
+                        return;
+
+                    // Wait for the dataset to be integrated
+                    while ((int)task.status < 400)
+                    {
+                        Console.WriteLine("Dataset task status = {0}", task.status);
+                        await Task.Delay(1000);
+                        task = await client.GetAsync<AsyncTaskStatus>(apiEndPoint.AppendToURL("task", auth.token, project.id, task.id));
+                    }
+                    Console.WriteLine("Dataset task status = {0}", task.status);
+                    // Get the transformed dataset
+                    await client.DownloadAsync(apiEndPoint.AppendToURL("file", "export", auth.token, project.id, "transform"), "data_t.csv");
                 }
             }
             catch (Exception ex)
